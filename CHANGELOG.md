@@ -12,6 +12,13 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.13.2 (2026-10-15)
+
+### Fixed
+- The role line now always types letter by letter. When the system's "reduce motion" setting was on (for example Windows with **Animation effects** off), the words only swapped.
+
+---
+
 ## 2026.13.1 (2026-10-15)
 
 ### Changed

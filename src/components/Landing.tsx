@@ -151,13 +151,7 @@ function TypeCycle() {
   const [n, setN] = useState(0);
   const [del, setDel] = useState(false);
   useEffect(() => {
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const word = ROLES[i];
-    if (reduce) {
-      const t = setTimeout(() => { setI((i + 1) % ROLES.length); setN(ROLES[(i + 1) % ROLES.length].length); }, 2200);
-      if (n !== word.length) setN(word.length);
-      return () => clearTimeout(t);
-    }
     let t: ReturnType<typeof setTimeout>;
     if (!del && n < word.length) t = setTimeout(() => setN(n + 1), 120);
     else if (!del) t = setTimeout(() => setDel(true), 1800);

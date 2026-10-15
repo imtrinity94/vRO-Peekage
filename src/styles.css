@@ -753,7 +753,6 @@ tr:hover .val-btn, .val-btn:focus-visible, .val-cell:has(.code-edited) .val-btn 
 .lp-type-word { color: var(--accent, #0072a3); }
 .lp-type-caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 2px; vertical-align: -0.15em; background: var(--accent, #0072a3); animation: lp-caret 1s steps(1) infinite; }
 @keyframes lp-caret { 50% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .lp-type-caret { animation: none; } }
 
 /* ---- Package signer ---- */
 .top-sign { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; font-size: 14px; padding: 6px 10px; border-radius: 8px; }
