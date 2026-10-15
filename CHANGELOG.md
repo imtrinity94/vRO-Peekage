@@ -12,6 +12,17 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.13.0 (2026-10-15)
+
+### Added
+- **Package Signer** (`#/sign`), a separate tool linked from the front page. It re-signs any `.package` with a new publisher certificate valid for **10 years**, entirely in the browser.
+  - Create a new certificate (RSA 2048, SHA-512, 10 years; defaults CN "vRO Package Signer", OU "Automation", O "Orchestrator", optional country), or reuse an existing PEM key and certificate.
+  - Every file is signed again, the old signatures and certificates are replaced, and `pkg-signer` is updated. An option also makes the certificate the package owner.
+  - Shows the current and new publisher, validity and SHA-1 fingerprint. **Download signing key** gives a zip with the key, the certificate (PEM and DER) and keytool commands for a JCEKS keystore.
+- **Typing animation** in the hero: "Your vRO …" types and replaces each role in a loop: content viewer, document generator, XML to JS converter, code parser, real-time code editor, package signer, workflow schema viewer, configuration element reader. With "reduce motion", the words swap without typing.
+
+---
+
 ## 2026.12.0 (2026-10-14)
 
 ### Added

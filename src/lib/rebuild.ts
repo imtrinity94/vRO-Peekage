@@ -127,7 +127,7 @@ export function setConfigValue(xml: string, attName: string, value: string): str
 /* Text encoding: write back in the same encoding the file came in     */
 /* ------------------------------------------------------------------ */
 
-function decodeSame(bytes: Uint8Array): { text: string; encode: (s: string) => Uint8Array } {
+export function decodeSame(bytes: Uint8Array): { text: string; encode: (s: string) => Uint8Array } {
   if (bytes[0] === 0xfe && bytes[1] === 0xff) {
     const text = new TextDecoder("utf-16be").decode(bytes.subarray(2));
     return { text, encode: (s) => utf16(s, true) };

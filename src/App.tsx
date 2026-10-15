@@ -9,6 +9,7 @@ import { Overview } from "./components/Overview";
 import { ElementView } from "./components/ElementView";
 import { SearchView } from "./components/SearchView";
 import { Landing } from "./components/Landing";
+import { SignTool } from "./components/SignTool";
 import { BackToTop } from "./components/BackToTop";
 import { APP_VERSION } from "./version";
 
@@ -48,7 +49,18 @@ export default function App() {
   );
 }
 
+function useHashRoute() {
+  const [h, setH] = useState(() => (typeof window === "undefined" ? "" : window.location.hash));
+  useEffect(() => {
+    const on = () => setH(window.location.hash);
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return h;
+}
+
 function AppMain() {
+  const hash = useHashRoute();
   const [pkg, setPkg] = useState<PackageInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -410,7 +422,9 @@ function AppMain() {
         {themeBtn}
       </header>
 
-      {!pkg ? (
+      {!pkg && hash === "#/sign" ? (
+        <SignTool onHome={() => { window.location.hash = ""; history.replaceState(null, "", window.location.pathname + window.location.search); window.dispatchEvent(new HashChangeEvent("hashchange")); }} />
+      ) : !pkg ? (
         <Landing scrollRef={landingRef} onPick={() => inputRef.current?.click()} onOpenUrl={loadUrl} busy={busy} error={error} dragging={drag} />
       ) : (
         <div className={`shell ${navOpen ? "nav-open" : ""}`}>
