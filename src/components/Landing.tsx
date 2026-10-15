@@ -159,10 +159,10 @@ function TypeCycle() {
       return () => clearTimeout(t);
     }
     let t: ReturnType<typeof setTimeout>;
-    if (!del && n < word.length) t = setTimeout(() => setN(n + 1), 65);
-    else if (!del) t = setTimeout(() => setDel(true), 1500);
-    else if (n > 0) t = setTimeout(() => setN(n - 1), 32);
-    else t = setTimeout(() => { setDel(false); setI((i + 1) % ROLES.length); }, 250);
+    if (!del && n < word.length) t = setTimeout(() => setN(n + 1), 120);
+    else if (!del) t = setTimeout(() => setDel(true), 1800);
+    else if (n > 0) t = setTimeout(() => setN(n - 1), 55);
+    else t = setTimeout(() => { setDel(false); setI((i + 1) % ROLES.length); }, 400);
     return () => clearTimeout(t);
   }, [i, n, del]);
   return (
@@ -179,6 +179,7 @@ export function Landing({ onPick, onOpenUrl, busy, error, dragging, scrollRef }:
     <main ref={scrollRef} className={`lp ${dragging ? "lp-dragging" : ""}`}>
       <section className="lp-hero">
         <div className="lp-copy">
+          <div className="lp-intro">
           <h1 className="lp-title">
             <span className="lp-peek">
               <svg className="lp-peek-eye" viewBox="12 17 24 18" aria-hidden>
@@ -191,6 +192,8 @@ export function Landing({ onPick, onOpenUrl, busy, error, dragging, scrollRef }:
             <span className="lp-title-sub">No Orchestrator needed.</span>
           </h1>
           <TypeCycle />
+          </div>
+          <div className="lp-about">
           <p className="lp-lede">
             Drop a package exported from vRealize Orchestrator 7.x, Aria Automation Orchestrator 8.x or VCF Operations Orchestrator 9.x. Its workflows, actions, configuration and resource elements, scripts and recorded runs open right here in your browser.
           </p>
@@ -208,6 +211,8 @@ export function Landing({ onPick, onOpenUrl, busy, error, dragging, scrollRef }:
               <strong>Ready for your AI assistant.</strong> Export the package as plain-text files, point your assistant at the folder, and ask it about your workflows.
             </span>
           </p>
+          </div>
+          <div className="lp-act">
           <div className="lp-cta">
             <button className="btn primary lp-btn" onClick={onPick} disabled={busy}>
               {busy ? "Reading package…" : "Choose a .package file"}
@@ -223,10 +228,7 @@ export function Landing({ onPick, onOpenUrl, busy, error, dragging, scrollRef }:
             </svg>
             Parsed in this tab. Files you choose are never uploaded.
           </p>
-          <a className="lp-sign" href="#/sign">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" /><path d="M9 12l2 2 4-4" /></svg>
-            <span><strong>New: Package Signer.</strong> Re-sign any package with a fresh 10-year certificate →</span>
-          </a>
+          </div>
         </div>
         <button className="lp-art" onClick={onPick} aria-label="Choose a .package file" disabled={busy}>
           <PeekBox />

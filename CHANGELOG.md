@@ -12,6 +12,15 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.13.1 (2026-10-15)
+
+### Changed
+- The typing line is slower, so each letter can be seen: 120 ms per letter, a 1.8 s pause on the full word, and gentler deleting.
+- The front-page hero is less crowded. It is now three spaced groups: headline and typing line; description and AI note; then the buttons, link box and privacy note.
+- **Package Signer** moved from a card in the hero to a link in the top bar, which is also visible on the signer page.
+
+---
+
 ## 2026.13.0 (2026-10-15)
 
 ### Added

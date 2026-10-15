@@ -1,6 +1,6 @@
 {
   "name": "vro-peekage",
-  "version": "2026.13.0",
+  "version": "2026.13.1",
   "private": true,
   "description": "vRO Peekage: browse vRealize / Aria Automation / VCF Operations Orchestrator .package files in your browser, no Orchestrator needed",
   "author": "imtrinity94",
