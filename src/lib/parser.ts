@@ -434,7 +434,7 @@ export async function parsePackage(data: ArrayBuffer | Uint8Array, fileName: str
   }
 
   elements.sort((a, b) => a.name.localeCompare(b.name));
-  return { fileName, fileSize, meta, certificates, signed, elements, byId, refs, usedBy, warnings, actionIndex };
+  return { fileName, fileSize, meta, certificates, signed, elements, byId, refs, usedBy, warnings, actionIndex, zip };
 }
 
 async function parseElement(folderId: string, files: JSZip.JSZipObject[], signed: boolean): Promise<PkgElement> {
@@ -471,6 +471,7 @@ async function parseElement(folderId: string, files: JSZip.JSZipObject[], signed
   const raw = textByName["data"];
   const base: BaseElement = {
     id,
+    folder: folderId,
     type,
     name: id,
     path,

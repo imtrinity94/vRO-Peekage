@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatBytes, parsePackage } from "./lib/parser";
 import { fetchPackage, shareLink } from "./lib/fetchPackage";
+import { EditsProvider, useEdits } from "./lib/editsContext";
+import { ChangesPanel } from "./components/ChangesPanel";
 import type { PackageInfo } from "./lib/types";
 import { Sidebar } from "./components/Sidebar";
 import { Overview } from "./components/Overview";
@@ -37,7 +39,16 @@ export interface ExportState {
 /** The front page's own <title>, restored when going back home. */
 const HOME_TITLE = typeof document !== "undefined" ? document.title : "vRO Peekage";
 
+/** The app, with the per-package edits store around it. */
 export default function App() {
+  return (
+    <EditsProvider>
+      <AppMain />
+    </EditsProvider>
+  );
+}
+
+function AppMain() {
   const [pkg, setPkg] = useState<PackageInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +57,16 @@ export default function App() {
   /** Link the open package was loaded from (enables the Share button), if any */
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  /** Package edits (scripts / config values) and the Changes dialog */
+  const { count: editCount, clear: clearEdits } = useEdits();
+  const [showChanges, setShowChanges] = useState(false);
+  const editCountRef = useRef(0);
+  editCountRef.current = editCount;
+  /** Ask before throwing away unsaved package changes. */
+  const confirmDiscard = useCallback(() => {
+    const n = editCountRef.current;
+    return n === 0 || window.confirm(`You have ${n} unsaved change${n === 1 ? "" : "s"} in this package. Leave without downloading them?`);
+  }, []);
   /** Full-screen "Downloading / Reading package" overlay */
   const [loading, setLoading] = useState<{ title: string; detail?: string; pct?: number } | null>(null);
   const [navOpen, setNavOpen] = useState(false);
@@ -99,6 +120,9 @@ export default function App() {
 
   /** Close the open package and return to the front page. */
   const goHome = useCallback(() => {
+    if (!confirmDiscard()) return;
+    clearEdits();
+    setShowChanges(false);
     setPkg(null);
     setError(null);
     setExporting(null);
@@ -107,15 +131,11 @@ export default function App() {
     setView({ kind: "overview" });
     document.title = HOME_TITLE;
     if (location.hash || location.search) history.pushState(null, "", location.pathname);
-  }, []);
+  }, [confirmDiscard, clearEdits]);
 
-  useEffect(() => {
-    const onPop = () => setView(readHash());
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
 
-  const load = useCallback(async (file: File, fromUrl?: string) => {
+  const load = useCallback(async (file: File, fromUrl?: string, confirmed = false) => {
+    if (!confirmed && !confirmDiscard()) return;
     setBusy(true);
     setError(null);
     setLoading({ title: "Reading package…", detail: `${file.name} · ${formatBytes(file.size)}` });
@@ -125,6 +145,8 @@ export default function App() {
       const buf = await file.arrayBuffer();
       const p = await parsePackage(buf, file.name);
       if (!p.elements.length && !Object.keys(p.meta).length) throw new Error("This doesn't look like a vRO package (no dunes-meta-inf or elements/ found).");
+      clearEdits();
+      setShowChanges(false);
       setPkg(p);
       setSourceUrl(fromUrl ?? null);
       // keep ?url= in the address bar for packages opened from a link, drop it otherwise
@@ -145,10 +167,11 @@ export default function App() {
       setBusy(false);
       setLoading(null);
     }
-  }, [go]);
+  }, [go, confirmDiscard, clearEdits]);
 
   /** "Open from URL" and shared ?url= links */
   const loadUrl = useCallback(async (url: string) => {
+    if (!confirmDiscard()) return;
     setBusy(true);
     setError(null);
     let host = "";
@@ -166,13 +189,40 @@ export default function App() {
           pct: total ? Math.min(100, Math.round((loaded / total) * 100)) : undefined,
         }),
       );
-      await load(file, url.trim());
+      await load(file, url.trim(), true);
     } catch (e) {
       setError(`Couldn't open that link: ${(e as Error).message}`);
       setBusy(false);
       setLoading(null);
     }
-  }, [load]);
+  }, [load, confirmDiscard]);
+
+  // Back / Forward: follow the address bar. Within a package only the #/view changes; when the
+  // ?url= part changes (e.g. Back after Home) open or close the linked package to match.
+  const pkgRef = useRef<{ pkg: PackageInfo | null; sourceUrl: string | null }>({ pkg: null, sourceUrl: null });
+  pkgRef.current = { pkg, sourceUrl };
+  useEffect(() => {
+    const onPop = () => {
+      const url = new URLSearchParams(location.search).get("url");
+      const cur = pkgRef.current;
+      if (url && url !== cur.sourceUrl) {
+        void loadUrl(url);
+        return;
+      }
+      if (!url && cur.sourceUrl) {
+        // went back to the front page from a linked package
+        setPkg(null);
+        setSourceUrl(null);
+        setExporting(null);
+        setError(null);
+        document.title = HOME_TITLE;
+        return;
+      }
+      setView(readHash());
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [loadUrl]);
 
   // Open a shared link: vro-peekage.vercel.app/?url=<package-url>
   useEffect(() => {
@@ -189,6 +239,17 @@ export default function App() {
       setTimeout(() => setLinkCopied(false), 1500);
     });
   }, [sourceUrl]);
+
+  // Warn before closing / reloading the tab with unsaved package changes
+  useEffect(() => {
+    if (!editCount) return;
+    const onBefore = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBefore);
+    return () => window.removeEventListener("beforeunload", onBefore);
+  }, [editCount]);
 
   // Global drag & drop
   useEffect(() => {
@@ -316,6 +377,15 @@ export default function App() {
               </svg>
               <span>{exporting?.running ? `${Math.round((exporting.done / exporting.total) * 100)}%` : "Export"}</span>
             </button>
+            {editCount > 0 && (
+              <button className="btn-ghost export-btn changes-btn" onClick={() => setShowChanges(true)} title="Review your changes and download a modified package">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+                <span>Changes</span>
+                <span className="chg-badge">{editCount}</span>
+              </button>
+            )}
             {sourceUrl && (
               <button className="btn-ghost export-btn" onClick={copyShareLink} title="Copy a link that opens this package in vRO Peekage" aria-label="Copy share link">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -348,6 +418,7 @@ export default function App() {
           <main className="main" ref={mainRef}>
             {busy && <div className="callout">Reading package…</div>}
             {error && <div className="callout warn">{error}</div>}
+            {showChanges && <ChangesPanel pkg={pkg} onClose={() => setShowChanges(false)} onNav={(id) => go({ kind: "element", id })} />}
             {view.kind === "overview" && <Overview pkg={pkg} onNav={(id) => go({ kind: "element", id })} onExport={runExport} exporting={exporting} />}
             {view.kind === "search" && <SearchView pkg={pkg} onOpen={(id, term) => go({ kind: "element", id, term })} />}
             {view.kind === "element" && el && <ElementView key={el.id + (view.term ?? "")} el={el} pkg={pkg} onNav={(id) => go({ kind: "element", id })} term={view.term} />}

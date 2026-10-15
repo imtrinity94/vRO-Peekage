@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { PackageInfo, PkgElement } from "../lib/types";
 import { KindIcon } from "./Icons";
+import { useEditsOptional } from "../lib/editsContext";
 
 const GROUPS: { kind: PkgElement["kind"]; label: string }[] = [
   { kind: "run", label: "Workflow runs" },
@@ -41,6 +42,7 @@ function countItems(f: Folder): number {
 function FolderNode({ f, depth, selected, onSelect, forceOpen }: { f: Folder; depth: number; selected?: string; onSelect: (id: string) => void; forceOpen: boolean }) {
   const [open, setOpen] = useState(true);
   const isOpen = open || forceOpen;
+  const changed = useEditsOptional()?.edits;
   const folders = [...f.folders.values()].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <>
@@ -57,12 +59,13 @@ function FolderNode({ f, depth, selected, onSelect, forceOpen }: { f: Folder; de
           {f.items.map((e) => (
             <button
               key={e.id}
-              className={`tree-item ${selected === e.id ? "on" : ""}`}
+              className={`tree-item ${selected === e.id ? "on" : ""}${changed?.[e.id] ? " changed" : ""}`}
               style={{ paddingLeft: 10 + (f.name ? depth + 1 : depth) * 12 }}
               onClick={() => onSelect(e.id)}
               title={e.name}
             >
               <KindIcon kind={e.kind} /> <span className="ellipsis">{e.name}</span>
+              {changed?.[e.id] && <span className="tree-changed" title="Changed in this session" aria-label="changed" />}
             </button>
           ))}
         </>

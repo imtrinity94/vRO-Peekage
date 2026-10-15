@@ -12,6 +12,20 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.12.0 (2026-10-14)
+
+### Added
+- **Edit a package and download it as a new .package.** Changes are kept for the whole session and can be imported back into Orchestrator.
+  - **What you can edit:** action scripts and workflow scriptable-task scripts (with **Edit** on the script), and configuration element values of type string, number and boolean (with **Edit** on the value).
+  - **Changes panel:** a **Changes** button in the top bar, with a count, lists every changed element and what changed. Each element can be undone, and **Download** builds `<package>-modified.package`. Changed elements are marked with a dot in the sidebar.
+  - **Versions:** every changed element gets a suggested higher version (0.0.0 → 0.0.1, 1.4.0 → 1.4.1), which you can edit. Orchestrator only picks an element up on import when its version is higher, and a version that isn't higher blocks the download.
+  - **How the rebuild works:** it starts from the original package and replaces only the edited scripts or values inside each element's existing XML. Every other file, including signatures and certificates, is kept byte for byte and in the same order. Orchestrator 9.1 rejects packages without their signature files, but accepts these.
+  - **SecureStrings** can't be edited and are kept as they are. Plain-text values were rejected by Orchestrator on import, so set them in Orchestrator after importing.
+  - **Unsaved changes:** a warning appears before closing the tab, going Home or opening another package while changes haven't been downloaded.
+- Script viewers outside a package (the front-page sample, resource files) keep the scratch-only Edit button.
+
+---
+
 ## 2026.11.1 (2026-10-10)
 
 ### Changed
@@ -19,6 +33,9 @@ The version lives in `package.json` and is shown in the app's top bar.
   - **Downloading package…**, with the source site and a live progress bar (for example "github.com · 611 KB of 1.80 MB")
   - **Reading package…**, with the file name and size, while it's parsed
 - It covers shared links, the URL box, choosing a file and drag-and-drop. The animation stays still when "reduce motion" is on.
+
+### Fixed
+- Browser **Back** after **Home** now reopens a package that was opened from a link, on the item you were viewing. **Forward** returns to the front page. Previously the address bar changed but nothing happened.
 
 ---
 

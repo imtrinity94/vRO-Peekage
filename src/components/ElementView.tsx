@@ -13,6 +13,8 @@ import type {
 } from "../lib/types";
 import { formatBytes, isTextMime, kindLabel, langForMime, decodeText } from "../lib/parser";
 import { CodeBlock } from "./CodeBlock";
+import { useEditsOptional } from "../lib/editsContext";
+import { ACTION_SCRIPT, EDITABLE_VALUE_TYPES } from "../lib/rebuild";
 import { TypeLabel, ValueView } from "./ValueView";
 import { SchemaDiagram } from "./SchemaDiagram";
 import { KindIcon } from "./Icons";
@@ -71,7 +73,70 @@ export function Header({ el, children }: { el: PkgElement; children?: React.Reac
   );
 }
 
-function ParamTable({ rows, empty, showValue }: { rows: (Param | Attrib)[]; empty: string; showValue?: boolean }) {
+/** Inline editor for one configuration value (string / number / boolean). */
+function ValueEditor({ elementId, a }: { elementId: string; a: Attrib }) {
+  const ctx = useEditsOptional();
+  const original = a.value ?? "";
+  const changed = ctx?.edits[elementId]?.values[a.name];
+  const current = changed ?? original;
+  const [draft, setDraft] = useState<string | null>(null);
+  if (!ctx) return null;
+  const isNum = a.type === "number";
+  const invalid = draft !== null && isNum && draft.trim() !== "" && !Number.isFinite(Number(draft));
+  const save = () => {
+    if (draft === null || invalid) return;
+    ctx.setValue(elementId, a.name, draft === original ? null : draft);
+    setDraft(null);
+  };
+  if (draft !== null) {
+    return (
+      <form
+        className="val-edit"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        {a.type === "boolean" ? (
+          <select className="input" value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        ) : (
+          <input
+            className={`input${invalid ? " invalid" : ""}`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setDraft(null)}
+            inputMode={isNum ? "decimal" : undefined}
+            spellCheck={false}
+            autoFocus
+            aria-label={`New value for ${a.name}`}
+          />
+        )}
+        <button className="btn sm" type="submit" disabled={invalid}>Save</button>
+        <button className="btn-ghost sm" type="button" onClick={() => setDraft(null)}>Cancel</button>
+        {invalid && <span className="val-err">Not a number</span>}
+      </form>
+    );
+  }
+  return (
+    <div className="val-cell">
+      {current === "" ? <span className="muted">—</span> : <ValueView value={current} />}
+      {changed !== undefined && <span className="code-edited" title={`Was: ${original === "" ? "(empty)" : original}`}>changed</span>}
+      <button className="btn-ghost sm val-btn" onClick={() => setDraft(current === "" && a.type === "boolean" ? "false" : current)} title="Change this value (kept in this session's changes)">
+        Edit
+      </button>
+      {changed !== undefined && (
+        <button className="btn-ghost sm val-btn" onClick={() => ctx.setValue(elementId, a.name, null)} title="Restore the original value">
+          Undo
+        </button>
+      )}
+    </div>
+  );
+}
+
+function ParamTable({ rows, empty, showValue, editableIn }: { rows: (Param | Attrib)[]; empty: string; showValue?: boolean; editableIn?: string }) {
   const [reveal, setReveal] = useState(false);
   if (!rows.length) return <p className="muted">{empty}</p>;
   const hasSecure = rows.some((r) => r.type === "SecureString" && r.value);
@@ -98,7 +163,10 @@ function ParamTable({ rows, empty, showValue }: { rows: (Param | Attrib)[]; empt
             const a = r as Attrib;
             let val: React.ReactNode = null;
             if (showValue) {
-              if (r.type === "SecureString") val = r.value ? (reveal ? <code className="wrapcode">{r.value}</code> : <span className="muted">•••••• (encrypted)</span>) : <span className="muted">—</span>;
+              if (r.type === "SecureString") {
+                val = r.value ? (reveal ? <code className="wrapcode">{r.value}</code> : <span className="muted">•••••• (encrypted)</span>) : <span className="muted">—</span>;
+                if (editableIn) val = <span className="val-cell" title="SecureString values can't be changed here. They are kept as they are; set them in Orchestrator after importing.">{val}<span className="val-lock">not editable</span></span>;
+              } else if (editableIn && EDITABLE_VALUE_TYPES.has(r.type)) val = <ValueEditor elementId={editableIn} a={a} />;
               else if (r.value === undefined || r.value === "") val = <span className="muted">—</span>;
               else val = <ValueView value={r.value} />;
             }
@@ -247,6 +315,7 @@ function Bindings({ it, wf }: { it: WfItem; wf: WorkflowElement }) {
 }
 
 function ItemDetail({ it, wf, pkg, onNav, term }: { it: WfItem; wf: WorkflowElement; pkg: PackageInfo; onNav: Nav; term?: string }) {
+  const edits = useEditsOptional();
   const linked = it.linkedWorkflowId ? pkg.byId.get(it.linkedWorkflowId.toLowerCase()) : undefined;
   const action = it.scriptModule ? pkg.actionIndex.get(it.scriptModule) : undefined;
   const env = it.environmentId ? pkg.byId.get(it.environmentId.toLowerCase()) : undefined;
@@ -271,7 +340,7 @@ function ItemDetail({ it, wf, pkg, onNav, term }: { it: WfItem; wf: WorkflowElem
       )}
       <Bindings it={it} wf={wf} />
       {it.script && it.script.trim() && (
-        <CodeBlock code={it.script} lang={it.lang} title="Script" highlightTerm={term} maxHeight={560} />
+        <CodeBlock code={it.script} lang={it.lang} title="Script" highlightTerm={term} maxHeight={560} edited={edits?.edits[wf.id]?.scripts[it.name]} onEdit={edits ? (c) => edits.setScript(wf.id, it.name, c) : undefined} />
       )}
     </section>
   );
@@ -420,6 +489,7 @@ function WorkflowView({ el, pkg, onNav, term }: { el: WorkflowElement; pkg: Pack
 /* ------------------------------ action ------------------------------ */
 
 function ActionView({ el, pkg, onNav, term }: { el: ActionElement; pkg: PackageInfo; onNav: Nav; term?: string }) {
+  const edits = useEditsOptional();
   type T = "code" | "refs" | "files";
   const [tab, setTab] = useState<T>("code");
   const env = el.environmentId ? pkg.byId.get(el.environmentId.toLowerCase()) : undefined;
@@ -449,7 +519,7 @@ function ActionView({ el, pkg, onNav, term }: { el: ActionElement; pkg: PackageI
               </tbody>
             </table>
           </section>
-          {el.script.trim() ? <CodeBlock code={el.script} lang={lang} title={`${el.name}`} highlightTerm={term} /> : <p className="muted">No inline script{el.hasBundle ? " — code lives in the bundle zip (see Raw tab)." : "."}</p>}
+          {el.script.trim() ? <CodeBlock code={el.script} lang={lang} title={`${el.name}`} highlightTerm={term} edited={edits?.edits[el.id]?.scripts[ACTION_SCRIPT]} onEdit={edits ? (c) => edits.setScript(el.id, ACTION_SCRIPT, c) : undefined} /> : <p className="muted">No inline script{el.hasBundle ? " — code lives in the bundle zip (see Raw tab)." : "."}</p>}
           {el.hasBundle && (
             <p><button className="btn" onClick={async () => download(`${el.name}-bundle.zip`, await el.getFile("bundle"), "application/zip")}>⬇ Download action bundle (zip)</button></p>
           )}
@@ -473,7 +543,7 @@ function ConfigView({ el, pkg, onNav }: { el: ConfigElement; pkg: PackageInfo; o
         {secure > 0 && <span className="chip warn">{secure} SecureString</span>}
       </Header>
       <Tabs<T> value={tab} onChange={setTab} tabs={[{ id: "atts", label: "Attributes", count: el.attributes.length }, { id: "refs", label: "Used by", count: pkg.usedBy.get(el.id.toLowerCase())?.size ?? 0 }, { id: "files", label: "Raw", count: el.files.length }]} />
-      {tab === "atts" && <section className="card"><ParamTable rows={el.attributes} empty="No attributes." showValue /></section>}
+      {tab === "atts" && <section className="card"><ParamTable rows={el.attributes} empty="No attributes." showValue editableIn={el.id} /></section>}
       {tab === "refs" && <RefsPanel el={el} pkg={pkg} onNav={onNav} />}
       {tab === "files" && <FilesPanel el={el} />}
     </>

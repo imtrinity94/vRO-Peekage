@@ -1,3 +1,5 @@
+import type JSZip from "jszip";
+
 export type KnownType =
   | "Workflow"
   | "ScriptModule"
@@ -63,6 +65,8 @@ export interface ElementFile {
 
 export interface BaseElement {
   id: string;
+  /** Folder name under elements/ in the package zip (normally the same as id) */
+  folder: string;
   type: string;
   name: string;
   /** Folder / category path, outermost first. For actions this is the module name. */
@@ -206,4 +210,6 @@ export interface PackageInfo {
   warnings: string[];
   /** action "module/name" -> element id */
   actionIndex: Map<string, string>;
+  /** The opened package archive, kept for rebuilding a modified package */
+  zip: JSZip;
 }

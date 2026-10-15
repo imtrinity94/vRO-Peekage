@@ -103,6 +103,8 @@ export function CodeBlock({
   highlightTerm,
   maxHeight,
   editable = true,
+  edited,
+  onEdit,
 }: {
   code: string;
   lang?: string;
@@ -111,22 +113,32 @@ export function CodeBlock({
   maxHeight?: number;
   /** Show the Edit button (scratch editing: changes are never saved anywhere). */
   editable?: boolean;
+  /** Saved edit for this script (package editing). With onEdit, edits are kept outside the viewer. */
+  edited?: string | null;
+  /** Called with the new code, or null when it matches the original again / is reset. */
+  onEdit?: (code: string | null) => void;
 }) {
+  const saved = !!onEdit;
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string | null>(null);
+  const [scratch, setScratch] = useState<string | null>(null);
   const [source, setSource] = useState(code);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   // A different script was opened in this viewer: drop any scratch edits.
   if (source !== code) {
     setSource(code);
-    setDraft(null);
+    setScratch(null);
     setEditing(false);
   }
 
   const trimmed = code.replace(/^\n+/, "").replace(/\s+$/, "");
+  const draft = saved ? (edited ?? null) : scratch;
+  const setDraft = (v: string | null) => {
+    if (saved) onEdit!(v === null || v === trimmed ? null : v);
+    else setScratch(v);
+  };
   const value = draft ?? trimmed;
   const modified = draft !== null && draft !== trimmed;
   const indent = useMemo(() => (/^\t/m.test(trimmed) ? "\t" : "    "), [trimmed]);
@@ -154,7 +166,14 @@ export function CodeBlock({
     <div className={`code${editing ? " editing" : ""}`}>
       <div className="code-head">
         <span className="code-title">{title}</span>
-        {modified && <span className="code-edited" title="Scratch edits: nothing is saved, Reset or opening another item discards them">edited</span>}
+        {modified && (
+          <span
+            className="code-edited"
+            title={saved ? "Saved in this session's changes: download them with Changes in the top bar" : "Scratch edits: nothing is saved, Reset or opening another item discards them"}
+          >
+            {saved ? "changed" : "edited"}
+          </span>
+        )}
         <span className="code-meta">
           {lang} · {lines} lines
         </span>
@@ -171,7 +190,13 @@ export function CodeBlock({
             className={`btn-ghost sm${editing ? " on" : ""}`}
             onClick={() => setEditing((v) => !v)}
             aria-pressed={editing}
-            title={editing ? "Stop editing (your changes stay until Reset)" : "Edit this script for quick prototyping. Changes are never saved."}
+            title={
+              editing
+                ? "Stop editing (your changes stay until Reset)"
+                : saved
+                  ? "Edit this script. Changes are kept for this session and can be downloaded as a modified package."
+                  : "Edit this script for quick prototyping. Changes are never saved."
+            }
           >
             {editing ? "Done" : "Edit"}
           </button>
