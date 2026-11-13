@@ -12,6 +12,14 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.13.3 (2026-11-13)
+
+### Changed
+- vRO Peekage can now also run on Cloudflare Pages, alongside Vercel. The "Open from URL" fallback proxy is shared by both: `functions/api/fetch-package.ts` hands Cloudflare's request to the same `api/fetch-package.ts`, and `public/_headers` gives Cloudflare the same security headers as `vercel.json`.
+- The proxy now checks a link's host name with `resolve4`/`resolve6` instead of `lookup` (Cloudflare does not support `lookup`). Private and internal addresses are still refused at every redirect hop.
+
+---
+
 ## 2026.13.2 (2026-10-15)
 
 ### Fixed

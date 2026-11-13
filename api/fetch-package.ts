@@ -7,8 +7,12 @@
  *   - at most 4.4 MB (Vercel's response limit is 4.5 MB), 20 s, and the file must be a zip
  *   - responses are cached at the CDN for an hour, so a popular share link costs one call an hour
  * Nothing is stored; the bytes are streamed through to the browser, which parses them locally.
+ *
+ * Runs on Vercel (as /api/fetch-package) and on Cloudflare Pages (functions/api/fetch-package.ts
+ * calls GET below). Host names are checked with resolve4/resolve6 rather than lookup, because
+ * Cloudflare's Workers runtime does not implement dns.lookup.
  */
-import { lookup } from "node:dns/promises";
+import { resolve4, resolve6 } from "node:dns/promises";
 import { isIP } from "node:net";
 
 const MAX_BYTES = 4.4 * 1024 * 1024;
@@ -48,8 +52,18 @@ async function assertPublic(u: URL): Promise<void> {
   if (u.username || u.password) throw new Error("Links with a user name or password aren't supported.");
   const host = u.hostname.replace(/^\[|\]$/g, "");
   if (/^(localhost|.*\.local|.*\.internal|.*\.lan)$/i.test(host)) throw new Error("That address isn't publicly reachable.");
-  const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
-  if (!addrs.length || addrs.some((a) => privateIp(a.address))) throw new Error("That address isn't publicly reachable.");
+  const addrs = isIP(host) ? [host] : await resolveAll(host);
+  if (!addrs.length) throw new Error("Couldn't find that address.");
+  if (addrs.some(privateIp)) throw new Error("That address isn't publicly reachable.");
+}
+
+// Every IPv4 and IPv6 address the name resolves to; a name with only one kind still works.
+async function resolveAll(host: string): Promise<string[]> {
+  const [v4, v6] = await Promise.allSettled([resolve4(host), resolve6(host)]);
+  return [
+    ...(v4.status === "fulfilled" ? v4.value : []),
+    ...(v6.status === "fulfilled" ? v6.value : []),
+  ];
 }
 
 export async function GET(request: Request): Promise<Response> {
