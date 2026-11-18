@@ -17,15 +17,16 @@ if (!root) {
 }
 const src = JSON.parse(readFileSync(path.join(root, "vro-doc-site/src/data/search-index.json"), "utf8"));
 
-// Plain JavaScript built-ins: linking them would only add noise.
-const SKIP = new Set(["Array", "Boolean", "Date", "Error", "Function", "JSON", "Math", "Number", "Object", "RegExp", "String"]);
+// Everything modernvroapi.in documents is linked, including JavaScript built-ins (JSON, Array, Date ...).
+// Names that are also ordinary words or primitive types in scripts.
+const SKIP = new Set(["boolean", "char", "selected"]);
 
 const plugins = {};
 for (const p of src.plugins) plugins[p.id] = p.name;
 
 const classes = {};
 for (const c of src.classes) {
-  if (SKIP.has(c.n) || !/^[A-Z][\w$]*$/.test(c.n)) continue;
+  if (SKIP.has(c.n) || !/^[A-Za-z_$][\w$]*$/.test(c.n)) continue;
   (classes[c.n] ??= []).includes(c.p) || classes[c.n].push(c.p);
 }
 

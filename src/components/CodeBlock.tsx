@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { apiUrl, linkApiClasses, loadApiIndex, type ApiIndex } from "../lib/vroApi";
+import { apiUrl, isJsBuiltin, linkApiClasses, loadApiIndex, mdnUrl, type ApiIndex } from "../lib/vroApi";
 import hljs from "highlight.js/lib/core";
 import javascript from "highlight.js/lib/languages/javascript";
 import python from "highlight.js/lib/languages/python";
@@ -121,7 +121,8 @@ function ApiPopover({ pop, index, onClose }: { pop: ApiPop; index: ApiIndex; onC
       window.removeEventListener("scroll", scroll, true);
     };
   }, [onClose]);
-  const plugins = index.classes[pop.cls] ?? [];
+  const plugins = Object.prototype.hasOwnProperty.call(index.classes, pop.cls) ? index.classes[pop.cls] : [];
+  const builtin = isJsBuiltin(pop.cls);
   const left = Math.max(8, Math.min(pop.x, window.innerWidth - 300));
   return createPortal(
     <div ref={ref} className="api-pop" role="dialog" aria-label={`${pop.cls} reference`} style={{ left, top: pop.y + 6 }}>
@@ -137,6 +138,14 @@ function ApiPopover({ pop, index, onClose }: { pop: ApiPop; index: ApiIndex; onC
           </a>
         </div>
       ))}
+      {builtin && (
+        <div className="api-pop-row">
+          <span className="muted small">JavaScript built-in (ES5, as in Orchestrator&apos;s Rhino engine)</span>
+          <a href={mdnUrl(pop.cls, pop.member)} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+            Open on MDN ↗
+          </a>
+        </div>
+      )}
     </div>,
     document.body,
   );

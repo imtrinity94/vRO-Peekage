@@ -12,13 +12,22 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.14.1 (2026-11-18)
+
+### Fixed
+- **JavaScript built-ins weren't linked.** `JSON`, `Math`, `Error`, `RegExp`, `Boolean`, `parseInt` and the other ES5 built-ins now link to MDN, straight to the method (e.g. `JSON.stringify` opens MDN's JSON.stringify page). modernvroapi.in has no pages for most of them. For the ones it does cover (`Array`, `Date`, `String`, `Number`, `Object`, `Function`), the card shows both links.
+- **vSphere API (vAPI) binding types weren't linked.** Lowercase class names such as `com_vmware_vcenter_VM` are now linked too: 2,254 more classes, 12,801 in total.
+- Words that happen to match built-in object properties (`constructor`, `toString` …) are never linked.
+
+---
+
 ## 2026.14.0 (2026-11-18)
 
 ### Added
 - **Class links to modernvroapi.in in scripts.** Orchestrator classes in JavaScript scripts (for example `VraHostManager`, `System`, `Server`, `RESTHost`) get a light dotted underline. Clicking one, or pressing Enter on it, opens a small card with the class, its plugin and **Open in modernvroapi.in ↗**.
   - In `Class.method(...)` calls the link goes straight to that method, e.g. `VraHostManager.findHostById` opens `modernvroapi.in/#/plugin/o11n-plugin-vra/class/VraHostManager#findHostById`.
   - Classes found in more than one plugin list each plugin with its own link.
-  - Names inside strings, plain JavaScript built-ins (`Array`, `Date`, `JSON` …) and variables are not linked.
+  - Names inside strings and variables are not linked.
   - Links appear in the read-only view, and come back after editing when you click **Done**.
 - The class index is `public/vroapi-classes.json` (10,540 classes from 34 plugins), built from modernvroapi.in's own data with `node scripts/build-vroapi-index.mjs <modern-vroapi checkout>`. It is loaded once, the first time a script is shown, and needs no connection to modernvroapi.in.
 
