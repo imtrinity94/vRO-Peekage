@@ -21,6 +21,7 @@ The package is parsed entirely client-side (JSZip + DOMParser). Nothing is uploa
 - **Environments** (`ActionEnvironment`): runtime, dependencies, environment variables, bundle file listing and download.
 - **Workflow runs** (`WorkflowToken`, from "Export run" packages): status, start/end, duration and profiler timings; the run's input, output and variable values split by the workflow's own signature (multi-line output shown console-style); exception details; the schema with the path that ran highlighted and timed; per-step timing; trace ID and any extension files (logs are rendered as a table when present).
 - **References**: "uses" / "used by" between elements (ID references, `System.getModule(...)` calls, `script-module` items, linked workflows, runtime environments), plus a list of actions referenced from outside the package.
+- **API links**: Orchestrator classes in scripts (`VraHostManager`, `System`, `Server` …) link to their reference page on [modernvroapi.in](https://modernvroapi.in), straight to the method for `Class.method(...)` calls. The class index is `public/vroapi-classes.json`; rebuild it with `node scripts/build-vroapi-index.mjs <modern-vroapi checkout>`.
 - **Search**: full-text / regex search across every script, config value and (optionally) raw XML.
 - **Raw**: every file stored for an element, decoded (the package stores most XML as UTF-16BE), with per-file download.
 

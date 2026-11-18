@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
+import { apiUrl, linkApiClasses, loadApiIndex, type ApiIndex } from "../lib/vroApi";
 import hljs from "highlight.js/lib/core";
 import javascript from "highlight.js/lib/languages/javascript";
 import python from "highlight.js/lib/languages/python";
@@ -96,6 +98,50 @@ function handleEditorKeys(e: KeyboardEvent<HTMLTextAreaElement>, indent: string)
   }
 }
 
+interface ApiPop {
+  cls: string;
+  member?: string;
+  x: number;
+  y: number;
+}
+
+/** Small card for a linked class: its plugin(s) and a link to modernvroapi.in. */
+function ApiPopover({ pop, index, onClose }: { pop: ApiPop; index: ApiIndex; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const down = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && !(e.target as Element).closest?.(".api-ref") && onClose();
+    const key = (e: globalThis.KeyboardEvent) => e.key === "Escape" && onClose();
+    const scroll = () => onClose();
+    document.addEventListener("mousedown", down);
+    document.addEventListener("keydown", key);
+    window.addEventListener("scroll", scroll, true);
+    return () => {
+      document.removeEventListener("mousedown", down);
+      document.removeEventListener("keydown", key);
+      window.removeEventListener("scroll", scroll, true);
+    };
+  }, [onClose]);
+  const plugins = index.classes[pop.cls] ?? [];
+  const left = Math.max(8, Math.min(pop.x, window.innerWidth - 300));
+  return createPortal(
+    <div ref={ref} className="api-pop" role="dialog" aria-label={`${pop.cls} reference`} style={{ left, top: pop.y + 6 }}>
+      <div className="api-pop-name mono">
+        {pop.cls}
+        {pop.member && <span className="muted">.{pop.member}</span>}
+      </div>
+      {plugins.map((p) => (
+        <div key={p} className="api-pop-row">
+          <span className="muted small">{index.plugins[p] ?? p}</span>
+          <a href={apiUrl(p, pop.cls, pop.member)} target="_blank" rel="noopener noreferrer" onClick={onClose}>
+            Open in modernvroapi.in ↗
+          </a>
+        </div>
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
 export function CodeBlock({
   code,
   lang = "javascript",
@@ -125,6 +171,9 @@ export function CodeBlock({
   const [scratch, setScratch] = useState<string | null>(null);
   const [source, setSource] = useState(code);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const codeRef = useRef<HTMLElement>(null);
+  const [apiIndex, setApiIndex] = useState<ApiIndex | null>(null);
+  const [pop, setPop] = useState<ApiPop | null>(null);
 
   // A different script was opened in this viewer: drop any scratch edits.
   if (source !== code) {
@@ -161,6 +210,30 @@ export function CodeBlock({
   useEffect(() => {
     if (editing) taRef.current?.focus({ preventScroll: true });
   }, [editing]);
+
+  // Link Orchestrator classes to modernvroapi.in (JavaScript only, not while editing).
+  const linkable = lang === "javascript" && !editing;
+  useEffect(() => {
+    if (!linkable) return;
+    let live = true;
+    loadApiIndex().then((idx) => {
+      if (!live || !idx || !codeRef.current) return;
+      setApiIndex(idx);
+      linkApiClasses(codeRef.current, idx);
+    });
+    return () => {
+      live = false;
+    };
+  }, [linkable, html]);
+  useEffect(() => setPop(null), [html, editing]);
+
+  const openRef = (el: Element | null) => {
+    const ref = el?.closest<HTMLElement>(".api-ref");
+    if (!ref || !ref.dataset.cls) return false;
+    const r = ref.getBoundingClientRect();
+    setPop({ cls: ref.dataset.cls, member: ref.dataset.member, x: r.left, y: r.bottom });
+    return true;
+  };
 
   return (
     <div className={`code${editing ? " editing" : ""}`}>
@@ -220,8 +293,13 @@ export function CodeBlock({
           </pre>
         )}
         <div className={`src-wrap${wrap ? " wrap" : ""}`}>
-          <pre className={`hljs src ${wrap ? "wrap" : ""}`} aria-hidden={editing || undefined}>
-            <code dangerouslySetInnerHTML={{ __html: html }} />
+          <pre
+            className={`hljs src ${wrap ? "wrap" : ""}`}
+            aria-hidden={editing || undefined}
+            onClick={(e) => openRef(e.target as Element)}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && openRef(e.target as Element) && e.preventDefault()}
+          >
+            <code ref={codeRef} dangerouslySetInnerHTML={{ __html: html }} />
           </pre>
           {editing && (
             <textarea
@@ -240,6 +318,7 @@ export function CodeBlock({
           )}
         </div>
       </div>
+      {pop && apiIndex && <ApiPopover pop={pop} index={apiIndex} onClose={() => setPop(null)} />}
     </div>
   );
 }

@@ -781,3 +781,13 @@ tr:hover .val-btn, .val-btn:focus-visible, .val-cell:has(.code-edited) .val-btn 
 .sign-cert { width: 100%; margin: .6rem 0; }
 .sign-cert th { text-align: left; white-space: nowrap; padding-right: 1rem; vertical-align: top; }
 .sign-cert td { word-break: break-all; }
+
+/* ---- modernvroapi.in class links in scripts ---- */
+.hljs .api-ref { cursor: pointer; text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; border-radius: 2px; }
+.hljs .api-ref:hover, .hljs .api-ref:focus-visible { text-decoration-color: currentColor; background: color-mix(in srgb, var(--accent, #0072a3) 12%, transparent); outline: none; }
+.api-pop { position: fixed; z-index: 1100; min-width: 220px; max-width: 300px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border, #d0d7de); background: var(--panel, #fff); color: var(--text, #1b2a38); box-shadow: 0 6px 24px rgba(0,0,0,.18); font-size: 13px; }
+.api-pop-name { font-weight: 600; margin-bottom: 6px; word-break: break-all; }
+.api-pop-row { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; border-top: 1px solid var(--border, #eee); }
+.api-pop-row:first-of-type { border-top: 0; padding-top: 0; }
+.api-pop a { color: var(--accent, #0072a3); text-decoration: none; font-weight: 600; }
+.api-pop a:hover { text-decoration: underline; }
