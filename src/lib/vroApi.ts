@@ -71,12 +71,12 @@ export function linkApiClasses(root: HTMLElement, index: ApiIndex): number {
 
   const hits: { node: Text; from: number; to: number; cls: string; member?: string }[] = [];
   TOKEN.lastIndex = 0;
+  let i = 0; // matches come in order, so the text-node cursor only moves forward
   for (let m = TOKEN.exec(full); m; m = TOKEN.exec(full)) {
     const cls = m[1];
     if (!isKnown(index, cls)) continue;
     if (full[m.index - 1] === ".") continue; // a property such as foo.Bar, not the class
     // Find the text node holding the class name; skip names split across nodes.
-    let i = 0;
     while (i + 1 < starts.length && starts[i + 1] <= m.index) i++;
     const node = nodes[i];
     const from = m.index - starts[i];
@@ -86,20 +86,31 @@ export function linkApiClasses(root: HTMLElement, index: ApiIndex): number {
     hits.push({ node, from, to, cls, member: m[2] });
   }
 
-  // Wrap from the end so earlier offsets in the same node stay valid.
-  for (let k = hits.length - 1; k >= 0; k--) {
-    const h = hits[k];
-    const range = document.createRange();
-    range.setStart(h.node, h.from);
-    range.setEnd(h.node, h.to);
-    const span = document.createElement("span");
-    span.className = "api-ref";
-    span.dataset.cls = h.cls;
-    if (h.member) span.dataset.member = h.member;
-    span.tabIndex = 0;
-    span.setAttribute("role", "button");
-    span.title = `${h.cls}: open the reference`;
-    range.surroundContents(span);
+  // Rebuild each affected text node once (text, link, text, link …). Splitting a node once per
+  // link copies the rest of the node every time, which is very slow when a long script is a
+  // single text node (uncoloured code).
+  let k = 0;
+  while (k < hits.length) {
+    const node = hits[k].node;
+    const text = node.nodeValue ?? "";
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    for (; k < hits.length && hits[k].node === node; k++) {
+      const h = hits[k];
+      if (h.from > pos) frag.appendChild(document.createTextNode(text.slice(pos, h.from)));
+      const span = document.createElement("span");
+      span.className = "api-ref";
+      span.dataset.cls = h.cls;
+      if (h.member) span.dataset.member = h.member;
+      span.tabIndex = 0;
+      span.setAttribute("role", "button");
+      span.title = `${h.cls}: open the reference`;
+      span.textContent = text.slice(h.from, h.to);
+      frag.appendChild(span);
+      pos = h.to;
+    }
+    if (pos < text.length) frag.appendChild(document.createTextNode(text.slice(pos)));
+    node.replaceWith(frag);
   }
   return hits.length;
 }

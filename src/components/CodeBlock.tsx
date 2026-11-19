@@ -36,6 +36,8 @@ export function highlightCode(code: string, lang: string): string {
 
 /** Above this size, editing falls back to plain text so typing stays smooth. */
 const MAX_HL_EDIT = 120_000;
+/** Above this many lines, scripts aren't scanned for API links (5,000 lines take about 50 ms; 20,000 about 1 s). */
+const MAX_LINK_LINES = 5000;
 
 function highlightHtml(code: string, lang: string, limit: number) {
   if (code.length > limit || !hljs.getLanguage(lang)) return escapeHtml(code);
@@ -221,7 +223,8 @@ export function CodeBlock({
   }, [editing]);
 
   // Link Orchestrator classes to modernvroapi.in (JavaScript only, not while editing).
-  const linkable = lang === "javascript" && !editing;
+  const tooLongToLink = lang === "javascript" && lines > MAX_LINK_LINES;
+  const linkable = lang === "javascript" && !editing && !tooLongToLink;
   useEffect(() => {
     if (!linkable) return;
     let live = true;
@@ -259,6 +262,11 @@ export function CodeBlock({
         <span className="code-meta">
           {lang} · {lines} lines
         </span>
+        {tooLongToLink && !editing && (
+          <span className="code-meta" title={`modernvroapi.in links are turned off for scripts over ${MAX_LINK_LINES.toLocaleString("en-US")} lines to keep the viewer fast.`}>
+            · API links off (over {MAX_LINK_LINES.toLocaleString("en-US")} lines)
+          </span>
+        )}
         <button className="btn-ghost sm" onClick={() => setWrap((w) => !w)}>
           {wrap ? "No wrap" : "Wrap"}
         </button>

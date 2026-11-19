@@ -12,6 +12,16 @@ The version lives in `package.json` and is shown in the app's top bar.
 
 ---
 
+## 2026.14.2 (2026-11-19)
+
+### Fixed
+- **Long scripts no longer freeze the viewer while API links are added.** A 2,000-line script took about 30 seconds to link, and now takes 16 ms. Scripts over 120,000 characters are shown without colours, as one long block of text, and the linker split that block once per link, copying the rest of the script each time. It now rebuilds each piece of text in one pass, and finding where each link goes no longer starts from the top of the script for every match.
+
+### Changed
+- API links are turned off for scripts over 5,000 lines, to keep the viewer fast. The script header then reads "API links off (over 5,000 lines)". Measured linking times are about 50 ms at 5,000 lines, 260 ms at 10,000 and 1 s at 20,000.
+
+---
+
 ## 2026.14.1 (2026-11-18)
 
 ### Fixed
